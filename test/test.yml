@@ -1,0 +1,41 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: worker-test-76994496b9-8x9c6
+  generateName: worker-test-76994496b9-
+  labels:
+    app: worker-test
+spec:
+  volumes:
+    - name: kube-api-access-njvdl
+      projected:
+        sources:
+          - serviceAccountToken:
+              expirationSeconds: 3607
+              path: token
+          - configMap:
+              name: kube-root-ca.crt
+              items:
+                - key: ca.crt
+                  path: ca.crt
+          - downwardAPI:
+              items:
+                - path: namespace
+                  fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.namespace
+        defaultMode: 420
+  containers:
+    - name: test-auto
+      image: 'saharshp/test-auto:5'
+      ports:
+        - name: http-80
+          containerPort: 80
+          protocol: TCP
+      resources: {}
+      volumeMounts:
+        - name: kube-api-access-njvdl
+          readOnly: true
+          mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      terminationMessagePath: /dev/termination-log
+  

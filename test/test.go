@@ -3,108 +3,58 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 func main() {
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
+	// Load the Kubernetes configuration from file
+	config, err := clientcmd.BuildConfigFromFlags("", "C:/Shuffle-Git/test/test.yml")
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
 
-	// creates the clientset
+	// Create a Kubernetes client
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
 
-	// Use clientset to create pods
-	podClient := clientset.CoreV1().Pods("default")
-
-	// Create a new pod object
-	pod1 := &corev1.Pod{
+	// Define the Pod spec
+	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "pod-1",
+			Name: "example-pod",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
 					Name:  "container-1",
-					Image: "nginx:1.14.2",
+					Image: "nginx",
 				},
 			},
 		},
 	}
 
-	// Create the new pod
-	_, err = podClient.Create(context.Background(), pod1, metav1.CreateOptions{})
+	// Create the Pod
+	fmt.Println("Creating Pod...")
+	createdPod, err := clientset.CoreV1().Pods("default").Create(context.Background(), pod, metav1.CreateOptions{})
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
+	fmt.Printf("Pod %s created\n", createdPod.GetName())
 
-	// Create another new pod object
-	pod2 := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "pod-2",
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:  "container-2",
-					Image: "nginx:1.14.2",
-				},
-			},
-		},
-	}
+	// Wait for a few seconds
+	time.Sleep(5 * time.Second)
 
-	// Create the new pod
-	_, err = podClient.Create(context.Background(), pod2, metav1.CreateOptions{})
+	// Delete the Pod
+	fmt.Println("Deleting Pod...")
+	err = clientset.CoreV1().Pods("default").Delete(context.Background(), createdPod.GetName(), metav1.DeleteOptions{})
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
-
-	// Use clientset to create services
-	serviceClient := clientset.CoreV1().Services("default")
-
-	// Create a new service object
-	service := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "my-service",
-		},
-		Spec: corev1.ServiceSpec{
-			Selector: map[string]string{
-				"app": "my-app",
-			},
-			Ports: []corev1.ServicePort{
-				{
-					Name:     "http",
-					Protocol: corev1.ProtocolTCP,
-					Port:     80,
-					TargetPort: intstr.IntOrString{
-						Type:   intstr.Int,
-						IntVal: 80,
-					},
-				},
-			},
-			Type: corev1.ServiceTypeClusterIP,
-		},
-	}
-
-	// Create the new service
-	_, err = serviceClient.Create(context.Background(), service, metav1.CreateOptions{})
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	fmt.Printf("Pod %s deleted\n", createdPod.GetName())
 }
